@@ -23,4 +23,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/token/', obtain_auth_token, name='obtain'),
     path('test/',include('demo.urls')),
+    path('lib/',include('lib_book.urls')),
 ] + static(settings.MEDIA_URL,document_root=settings.MEDIA_ROOT)
