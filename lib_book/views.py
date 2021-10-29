@@ -1,11 +1,12 @@
 from copy import error
-from re import S
+from typing import OrderedDict
 from django.contrib.auth.models import User
 from django.db.models import query
 from django.db.models import Q
 from rest_framework import response
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from backend.settings import AUTH_PASSWORD_VALIDATORS
 
 from lib_book.serializer import wiwSerializer
 from .models import lib_bookModel, available, book_detail, whoIssuedWhat
@@ -59,7 +60,7 @@ class ifIssued(APIView):
         uid = r[0]
         bid = int(req.query_params['book_id'])
 
-        cursor.execute("select * from lib_book_whoissuedwhat where book_id_id = %d and user_id_id = %d"%(uid,bid))
+        cursor.execute("select * from lib_book_whoissuedwhat where book_id_id = %d and user_id_id = %d"%(bid,uid))
         r = cursor.fetchall()
         if len(r) == 0:
             return Response({'issued':"0"})
@@ -94,3 +95,33 @@ def getUserId(req,cursor):
         sql = "select user_id from authtoken_token as a where a.key = '%s'"%(token)
         cursor.execute(sql)
         return cursor.fetchone()# user_id = r[0]
+
+#all the books issued by a user
+class AllIssuedByUser(APIView):
+    def get(self,req):
+        cursor = connection.cursor()
+        uid = getUserId(req,cursor)[0]
+
+        sql = '''
+        select b.id, b.title, w.book_id_id
+        from lib_book_lib_bookmodel as b
+        join
+        lib_book_whoissuedwhat as w
+        on b.id = w.book_id_id
+        where w.user_id_id =%d;
+        '''%(int(uid))
+
+        cursor.execute(sql)
+        r = cursor.fetchall()
+        li = []
+        for i in r:
+            d = OrderedDict()
+            d["id"]=i[0]
+            d["title"]=i[1]
+            d["book_id"]=i[2]
+            li.append(d)
+        # print(li)
+
+        return Response(li)
+
+
