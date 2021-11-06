@@ -6,6 +6,7 @@ from django.db.models import Q
 from rest_framework import response
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
 from backend.settings import AUTH_PASSWORD_VALIDATORS
 
 from lib_book.serializer import wiwSerializer
@@ -125,3 +126,49 @@ class AllIssuedByUser(APIView):
         return Response(li)
 
 
+#returning a book
+class returnbook(APIView):
+    def get(self,req):
+        cursor = connection.cursor()
+        uid = int(getUserId(req,cursor)[0])
+        bid = int(req.query_params['book_id'])
+        try:
+            #delete entry from  whoissuedwhat table
+            sql = '''
+            delete from lib_book_whoissuedwhat
+            where book_id_id = %d and user_id_id = %d
+            '''%(bid,uid)
+
+            cursor.execute(sql)
+            r = cursor.fetchone()
+            print(r)
+
+            #update issued for book in available table
+            sql = '''
+            update lib_book_available
+            set issued = issued - 1
+            where book_id_id = %s
+            '''%(bid)
+
+            cursor.execute(sql)
+            r = cursor.fetchone()
+            print(r)
+        except error:
+            return Response(error)
+        return Response({"status":"done"})
+
+class createUser(APIView):
+    permission_classes = [AllowAny]
+    def post(self,req):
+        username = req.data['username']
+        email = req.data['email']
+        password = req.data['password']
+        first_name = req.data['first_name']
+        last_name = req.data['last_name']
+
+        try:
+            user = User.objects.create_user(username,email,password,first_name=first_name,last_name=last_name)
+            user.save()
+        except error:
+            return Response(error,status=401)
+        return Response({"status":"Done"},status=200)
