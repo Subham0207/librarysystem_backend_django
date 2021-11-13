@@ -172,3 +172,70 @@ class createUser(APIView):
         except error:
             return Response(error,status=401)
         return Response({"status":"Done"},status=200)
+
+
+
+class getUserName(APIView):
+    def get(self,req):
+        cursor = connection.cursor()
+        token = (req.headers['Authorization'].split(' ')[1])
+        try:
+            sql = '''
+            select username
+            from auth_user
+            where
+            id = (select user_id from authtoken_token as a where a.key = '%s')
+            '''%(token)
+
+            cursor.execute(sql)
+            username = cursor.fetchone()
+        except error:
+            return Response(error)             
+        return Response({'username':username[0]})
+
+
+class searchbooks(APIView):
+    def get(self,req):
+        cursor = connection.cursor()
+        searchby = req.query_params['filter']
+        value = req.query_params['value']
+        sql = '''
+        select b.id
+        from lib_book_lib_bookmodel as b
+        join lib_book_book_detail as d
+        on d.id = b.id
+        where INSTR(%s , '%s') > 0;
+        '''%(searchby,value)
+        cursor.execute(sql)
+        ids = cursor.fetchall()
+        li = []
+        for i in ids:
+            li.append(int(i[0]))
+        queryset = lib_bookModel.objects.filter(id__in = li).values('id','title','book_detail__author','book_detail__genre',
+            'available__total','available__issued')
+        return Response(queryset)
+
+class reload(APIView):
+    def get(self,req):
+        #reload only available
+        cursor = connection.cursor()
+        id = int(req.query_params['book_id'])
+        sql = '''
+        select issued
+        from lib_book_available
+        where book_id_id = %d
+        '''%(id)
+        cursor.execute(sql)
+        avail = cursor.fetchone()
+        return Response({'issued':avail[0]})
+
+
+class serveDetails(APIView):
+    def get(self,req):
+        id = int(req.query_params['book_id'])
+        cursor = connection.cursor()
+        sql = "select description from lib_book_book_detail where book_id_id = %d"%(id)
+        cursor.execute(sql)
+        desc = cursor.fetchone()
+        return Response({'desc':desc[0]})
+
